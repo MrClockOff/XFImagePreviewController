@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controllers="clr-namespace:ImagePreviewController.Controllers"
+             x:Class="ImagePreviewController.MainPage">
+
+    <StackLayout Padding="20"                 
+                 Orientation="Vertical">
+        <controllers:ImagePreviewController Source="https://dev-mhubcdn.mhub.tv/systemfiles/thumbnails/c50ca49e-4881-453b-a01b-1f98246b3af5/ph/ot/o./photo.jpg_full.jpg"
+                                            WidthRequest="240"
+                                            HeightRequest ="240">
+        </controllers:ImagePreviewController>
+        
+        <Label Text="Welcome to Xamarin.Forms!">
+        </Label>
+    </StackLayout>
+
+</ContentPage>
