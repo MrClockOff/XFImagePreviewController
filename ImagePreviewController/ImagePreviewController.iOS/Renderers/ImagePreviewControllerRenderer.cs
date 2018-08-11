@@ -10,6 +10,7 @@ namespace ImagePreviewController.iOS.Renderers
 {
     internal class ImagePreviewControllerRenderer : ImageRenderer
     {
+        private const double DefaultAnimationTimeSeconds = 0.5;
         private Image _element;
 
         private UIImageView _imageView;
@@ -48,43 +49,47 @@ namespace ImagePreviewController.iOS.Renderers
                 BackgroundColor = UIColor.Black,
                 Alpha = 0
             };
-            var imageViewFrame = _imageView.Frame;
-            var zoomedImageViewPosition = new CGPoint(0, (windowFrame.Height - imageViewFrame.Height) / 2);
-            var zoomedImageViewFrame = new CGRect(zoomedImageViewPosition, imageViewFrame.Size);
+            var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
             var zoomedImageView = new UIImageView
             {
-                Frame = zoomedImageViewFrame,
+                Frame = initialImageViewFrame,
                 ContentMode = UIViewContentMode.ScaleAspectFit,
                 Image = _imageView.Image,
-                UserInteractionEnabled = true,
-                Alpha = 0
+                UserInteractionEnabled = true
             };
             var tapGestureRecognizer = new UITapGestureRecognizer(() =>
             {
-                Animate(0.75,
+                Animate(DefaultAnimationTimeSeconds, 0, UIViewAnimationOptions.CurveEaseOut,
                     () =>
                     {
                         blackBackgroundView.Alpha = 0;
-                        zoomedImageView.Alpha = 0;
+                        zoomedImageView.Frame = initialImageViewFrame;
                     },
                     () =>
                     {
+                        _imageView.Alpha = 1;
                         blackBackgroundView.RemoveFromSuperview();
                         zoomedImageView.RemoveFromSuperview();
-                    }
-                );
+                    });
             });
 
+            _imageView.Alpha = 0;
             zoomedImageView.AddGestureRecognizer(tapGestureRecognizer);
             window.AddSubview(blackBackgroundView);
             window.AddSubview(zoomedImageView);
 
-            AnimateAsync(0.75,
+            Animate(DefaultAnimationTimeSeconds, 0, UIViewAnimationOptions.CurveEaseOut,
                 () =>
                 {
                     blackBackgroundView.Alpha = 1;
-                    zoomedImageView.Alpha = 1;
-                }
+                    zoomedImageView.Frame = new CGRect(
+                        0,
+                        (windowFrame.Height - initialImageViewFrame.Height) / 2,
+                        initialImageViewFrame.Width,
+                        initialImageViewFrame.Height
+                    );
+                }, 
+                null
             );
         }
     }
