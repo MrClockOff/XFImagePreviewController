@@ -82,15 +82,42 @@ namespace ImagePreviewController.iOS.Renderers
                 () =>
                 {
                     blackBackgroundView.Alpha = 1;
-                    zoomedImageView.Frame = new CGRect(
-                        0,
-                        (windowFrame.Height - initialImageViewFrame.Height) / 2,
-                        initialImageViewFrame.Width,
-                        initialImageViewFrame.Height
-                    );
+                    zoomedImageView.Frame = GetInitialZoomedImageViewFrame(_imageView.Image.Size);
                 }, 
                 null
             );
+        }
+
+        private CGRect GetInitialZoomedImageViewFrame(CGSize initialImageSize)
+        {
+            var result = CGRect.Empty;
+            var windowFrame = UIApplication.SharedApplication.KeyWindow.Frame;
+
+            if (initialImageSize.Width > initialImageSize.Height)
+            {
+                // Landscape
+                result.Width = windowFrame.Width;
+                result.Height = (initialImageSize.Height * result.Width) / initialImageSize.Width;
+                result.X = 0;
+                result.Y = (windowFrame.Height - result.Height) / 2;
+            } 
+            else if (initialImageSize.Width < initialImageSize.Height)
+            {
+                // Portrait
+                result.Height = windowFrame.Height;
+                result.Width = (initialImageSize.Width * result.Height) / initialImageSize.Height;
+                result.X = (windowFrame.Width - result.Width) / 2;
+                result.Y = 0;
+            } 
+            else {
+                // Square
+                result.Width = windowFrame.Width;
+                result.Height = result.Width;
+                result.X = 0;
+                result.Y = (initialImageSize.Height * result.Width) / initialImageSize.Width;
+            }
+
+            return result;
         }
     }
 }
