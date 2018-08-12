@@ -52,6 +52,7 @@ namespace ImagePreviewController.iOS.Renderers
                 Alpha = 0,
             };
             var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
+            var initialZoomedImageViewFrame = GetInitialZoomedImageViewFrame(window.Bounds.Size, _imageView.Image.Size);
             var scrollView = new UIScrollView
             {
                 Frame = windowFrame,
@@ -108,6 +109,7 @@ namespace ImagePreviewController.iOS.Renderers
 
             _imageView.Alpha = 0;
             scrollView.ViewForZoomingInScrollView += (s) => zoomedImageView;
+            scrollView.DidZoom += ScrollView_DidZoom;
             zoomedImageView.AddGestureRecognizer(tapGestureRecognizer);
             zoomedImageView.AddGestureRecognizer(doubleTapGestureRecognizer);
             window.AddSubview(backgroundView);
@@ -118,13 +120,35 @@ namespace ImagePreviewController.iOS.Renderers
                 () =>
                 {
                     backgroundView.Alpha = 1;
-                    zoomedImageView.Frame = windowFrame;
+                    zoomedImageView.Frame = initialZoomedImageViewFrame;
                 }, 
                 () => {
                     scrollView.AddSubview(zoomedImageView);
                     scrollView.SetZoomScale(MinScale, false);
                 }
             );
+        }
+
+        private CGRect GetInitialZoomedImageViewFrame(CGSize viewBoundsSize, CGSize imageSize)
+        {
+            var widthRatio = viewBoundsSize.Width / imageSize.Width;
+            var heightRatio = viewBoundsSize.Height / imageSize.Height;
+            var scale = Math.Min(widthRatio, heightRatio);
+            var imageWidth = scale * imageSize.Width;
+            var imageHeight = scale * imageSize.Height;
+            var frame = new CGRect(0, (viewBoundsSize.Height - imageHeight) / 2, imageWidth, imageHeight);
+            return frame;
+        }
+
+        private void ScrollView_DidZoom(object sender, EventArgs e)
+        {
+            var scrollView = sender as UIScrollView;
+            var subView = scrollView.Subviews[0];
+
+            var offsetX = Math.Max((scrollView.Bounds.Size.Width - scrollView.ContentSize.Width) * 0.5, 0.0);
+            var offsetY = Math.Max((scrollView.Bounds.Size.Height - scrollView.ContentSize.Height) * 0.5, 0.0);
+
+            subView.Center = new CGPoint(scrollView.ContentSize.Width * 0.5 + offsetX, scrollView.ContentSize.Height * 0.5 + offsetY);
         }
     }
 }
