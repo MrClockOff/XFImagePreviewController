@@ -11,6 +11,8 @@ namespace ImagePreviewController.iOS.Renderers
     internal class ImagePreviewControllerRenderer : ImageRenderer
     {
         private const double DefaultAnimationTimeSeconds = 0.5;
+        private const float MinScale = 1.0f;
+        private const float MaxScale = 5.0f;
         private Image _element;
 
         private UIImageView _imageView;
@@ -43,13 +45,22 @@ namespace ImagePreviewController.iOS.Renderers
         {
             var window = UIApplication.SharedApplication.KeyWindow;
             var windowFrame = window.Frame;
-            var blackBackgroundView = new UIView
+            var backgroundView = new UIView
             {
                 Frame = windowFrame,
                 BackgroundColor = UIColor.Black,
-                Alpha = 0
+                Alpha = 0,
             };
             var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
+            var scrollView = new UIScrollView
+            {
+                Frame = windowFrame,
+                MinimumZoomScale = MinScale,
+                MaximumZoomScale = MaxScale,
+                ContentSize = _imageView.Image.Size,
+                ShowsVerticalScrollIndicator = false,
+                ShowsHorizontalScrollIndicator = false
+            };
             var zoomedImageView = new UIImageView
             {
                 Frame = initialImageViewFrame,
@@ -57,67 +68,63 @@ namespace ImagePreviewController.iOS.Renderers
                 Image = _imageView.Image,
                 UserInteractionEnabled = true
             };
+            var doubleTapGestureRecognizer = new UITapGestureRecognizer(() => 
+            {
+                if (Math.Abs(scrollView.ZoomScale - MaxScale) < 0.001) {
+                    scrollView.SetZoomScale(MinScale, true);
+                } else {
+                    scrollView.SetZoomScale(MaxScale, true);
+                }
+            })
+            {
+                NumberOfTapsRequired = 2
+            };
             var tapGestureRecognizer = new UITapGestureRecognizer(() =>
             {
+                if (Math.Abs(scrollView.ZoomScale - MinScale) > 0.001)
+                {
+                    return;
+                }
+
+                window.AddSubview(zoomedImageView);
+
                 Animate(DefaultAnimationTimeSeconds, 0, UIViewAnimationOptions.CurveEaseOut,
                     () =>
                     {
-                        blackBackgroundView.Alpha = 0;
+                        backgroundView.Alpha = 0;
                         zoomedImageView.Frame = initialImageViewFrame;
                     },
                     () =>
                     {
                         _imageView.Alpha = 1;
-                        blackBackgroundView.RemoveFromSuperview();
                         zoomedImageView.RemoveFromSuperview();
+                        scrollView.RemoveFromSuperview();
+                        backgroundView.RemoveFromSuperview();
                     });
-            });
+            })
+            {
+                NumberOfTapsRequired = 1
+            };
 
             _imageView.Alpha = 0;
+            scrollView.ViewForZoomingInScrollView += (s) => zoomedImageView;
             zoomedImageView.AddGestureRecognizer(tapGestureRecognizer);
-            window.AddSubview(blackBackgroundView);
+            zoomedImageView.AddGestureRecognizer(doubleTapGestureRecognizer);
+            window.AddSubview(backgroundView);
+            window.AddSubview(scrollView);
             window.AddSubview(zoomedImageView);
 
             Animate(DefaultAnimationTimeSeconds, 0, UIViewAnimationOptions.CurveEaseOut,
                 () =>
                 {
-                    blackBackgroundView.Alpha = 1;
-                    zoomedImageView.Frame = GetInitialZoomedImageViewFrame(_imageView.Image.Size);
+                    backgroundView.Alpha = 1;
+                    zoomedImageView.Frame = windowFrame;
                 }, 
-                null
+                () => {
+                    scrollView.AddSubview(zoomedImageView);
+                    scrollView.SetZoomScale(MinScale, false);
+                }
             );
-        }
-
-        private CGRect GetInitialZoomedImageViewFrame(CGSize initialImageSize)
-        {
-            var result = CGRect.Empty;
-            var windowFrame = UIApplication.SharedApplication.KeyWindow.Frame;
-
-            if (initialImageSize.Width > initialImageSize.Height)
-            {
-                // Landscape
-                result.Width = windowFrame.Width;
-                result.Height = (initialImageSize.Height * result.Width) / initialImageSize.Width;
-                result.X = 0;
-                result.Y = (windowFrame.Height - result.Height) / 2;
-            } 
-            else if (initialImageSize.Width < initialImageSize.Height)
-            {
-                // Portrait
-                result.Height = windowFrame.Height;
-                result.Width = (initialImageSize.Width * result.Height) / initialImageSize.Height;
-                result.X = (windowFrame.Width - result.Width) / 2;
-                result.Y = 0;
-            } 
-            else {
-                // Square
-                result.Width = windowFrame.Width;
-                result.Height = result.Width;
-                result.X = 0;
-                result.Y = (initialImageSize.Height * result.Width) / initialImageSize.Width;
-            }
-
-            return result;
         }
     }
 }
