@@ -31,18 +31,24 @@ namespace ImagePreviewController.iOS.Renderers
                 return;
             }
 
+            // Set Xamarin.Forms element tap gesture
             var tapGestureRecogniser = new TapGestureRecognizer();
             tapGestureRecogniser.Tapped += OnTapped;
             _element.GestureRecognizers.Add(tapGestureRecogniser);
 
             _imageView = new UIImageView();
 
+            // Replace rendeder native control with our own to keep the reference of it
+            // base.OnElementChanged(e); has to be called after setting native control
             SetNativeControl(_imageView);
+
             base.OnElementChanged(e);
         }
 
         private void OnTapped(object sender, EventArgs eventArgs)
         {
+            // Get screen frame (frame contains screen size)
+            // and create background view for full screen preview
             var window = UIApplication.SharedApplication.KeyWindow;
             var windowFrame = window.Frame;
             var backgroundView = new UIView
@@ -51,8 +57,7 @@ namespace ImagePreviewController.iOS.Renderers
                 BackgroundColor = UIColor.Black,
                 Alpha = 0,
             };
-            var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
-            var initialZoomedImageViewFrame = GetInitialZoomedImageViewFrame(window.Bounds.Size, _imageView.Image.Size);
+            // Create scroll view to use for zooming in/out features
             var scrollView = new UIScrollView
             {
                 Frame = windowFrame,
@@ -62,6 +67,10 @@ namespace ImagePreviewController.iOS.Renderers
                 ShowsVerticalScrollIndicator = false,
                 ShowsHorizontalScrollIndicator = false
             };
+            // Get initial image view relative coordinates which will be used in
+            // exit full screen animation 
+            // Create image view which will hold reference to original image
+            var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
             var zoomedImageView = new UIImageView
             {
                 Frame = initialImageViewFrame,
@@ -69,6 +78,7 @@ namespace ImagePreviewController.iOS.Renderers
                 Image = _imageView.Image,
                 UserInteractionEnabled = true
             };
+            // Create tab gesture recognizer which will zoom in or out the image on double tap
             var doubleTapGestureRecognizer = new UITapGestureRecognizer(() => 
             {
                 if (Math.Abs(scrollView.ZoomScale - MaxScale) < 0.001) {
@@ -80,6 +90,8 @@ namespace ImagePreviewController.iOS.Renderers
             {
                 NumberOfTapsRequired = 2
             };
+            // Create tab gesture which will exit full screen on single tap
+            // and animate image moving back to its initial place 
             var tapGestureRecognizer = new UITapGestureRecognizer(() =>
             {
                 if (Math.Abs(scrollView.ZoomScale - MinScale) > 0.001)
@@ -107,6 +119,8 @@ namespace ImagePreviewController.iOS.Renderers
                 NumberOfTapsRequired = 1
             };
 
+            // Once zooming image view created hide the original one
+            // and animate transition into full screen
             _imageView.Alpha = 0;
             scrollView.ViewForZoomingInScrollView += (s) => zoomedImageView;
             scrollView.DidZoom += ScrollView_DidZoom;
@@ -120,7 +134,7 @@ namespace ImagePreviewController.iOS.Renderers
                 () =>
                 {
                     backgroundView.Alpha = 1;
-                    zoomedImageView.Frame = initialZoomedImageViewFrame;
+                    zoomedImageView.Frame = GetInitialZoomedImageViewFrame(window.Bounds.Size, _imageView.Image.Size);;
                 }, 
                 () => {
                     scrollView.AddSubview(zoomedImageView);
@@ -129,6 +143,7 @@ namespace ImagePreviewController.iOS.Renderers
             );
         }
 
+        // Creates frame for zoomin image view with size of image to avoid blank space arround of image
         private CGRect GetInitialZoomedImageViewFrame(CGSize viewBoundsSize, CGSize imageSize)
         {
             var widthRatio = viewBoundsSize.Width / imageSize.Width;
@@ -140,6 +155,7 @@ namespace ImagePreviewController.iOS.Renderers
             return frame;
         }
 
+        // Centers scroll view content on zooming
         private void ScrollView_DidZoom(object sender, EventArgs e)
         {
             var scrollView = sender as UIScrollView;
