@@ -13,20 +13,12 @@ namespace ImagePreviewController.iOS.Renderers
         private const double DefaultAnimationTimeSeconds = 0.5;
         private const float MinScale = 1.0f;
         private const float MaxScale = 5.0f;
-        private Image _element;
-
-        private UIImageView _imageView;
 
         protected override void OnElementChanged(ElementChangedEventArgs<Image> e)
         {
-            if (Equals(e.NewElement, e.OldElement))
-            {
-                return;
-            }
+            base.OnElementChanged(e);
 
-            _element = e.NewElement;
-
-            if (_element == null)
+            if (Element == null || Equals(Element, e.OldElement))
             {
                 return;
             }
@@ -34,15 +26,7 @@ namespace ImagePreviewController.iOS.Renderers
             // Set Xamarin.Forms element tap gesture
             var tapGestureRecogniser = new TapGestureRecognizer();
             tapGestureRecogniser.Tapped += OnTapped;
-            _element.GestureRecognizers.Add(tapGestureRecogniser);
-
-            _imageView = new UIImageView();
-
-            // Replace rendeder native control with our own to keep the reference of it
-            // base.OnElementChanged(e); has to be called after setting native control
-            SetNativeControl(_imageView);
-
-            base.OnElementChanged(e);
+            Element.GestureRecognizers.Add(tapGestureRecogniser);
         }
 
         private void OnTapped(object sender, EventArgs eventArgs)
@@ -63,19 +47,19 @@ namespace ImagePreviewController.iOS.Renderers
                 Frame = windowFrame,
                 MinimumZoomScale = MinScale,
                 MaximumZoomScale = MaxScale,
-                ContentSize = _imageView.Image.Size,
+                ContentSize = Control.Image.Size,
                 ShowsVerticalScrollIndicator = false,
                 ShowsHorizontalScrollIndicator = false
             };
             // Get initial image view relative coordinates which will be used in
             // exit full screen animation 
             // Create image view which will hold reference to original image
-            var initialImageViewFrame = _imageView.Superview.ConvertRectToView(_imageView.Frame, null);
+            var initialImageViewFrame = Control.Superview.ConvertRectToView(Control.Frame, null);
             var zoomedImageView = new UIImageView
             {
                 Frame = initialImageViewFrame,
                 ContentMode = UIViewContentMode.ScaleAspectFit,
-                Image = _imageView.Image,
+                Image = Control.Image,
                 UserInteractionEnabled = true
             };
             // Create tab gesture recognizer which will zoom in or out the image on double tap
@@ -109,7 +93,7 @@ namespace ImagePreviewController.iOS.Renderers
                     },
                     () =>
                     {
-                        _imageView.Alpha = 1;
+                        Control.Alpha = 1;
                         zoomedImageView.RemoveFromSuperview();
                         scrollView.RemoveFromSuperview();
                         backgroundView.RemoveFromSuperview();
@@ -121,7 +105,7 @@ namespace ImagePreviewController.iOS.Renderers
 
             // Once zooming image view created hide the original one
             // and animate transition into full screen
-            _imageView.Alpha = 0;
+            Control.Alpha = 0;
             scrollView.ViewForZoomingInScrollView += (s) => zoomedImageView;
             scrollView.DidZoom += ScrollView_DidZoom;
             zoomedImageView.AddGestureRecognizer(tapGestureRecognizer);
@@ -134,7 +118,7 @@ namespace ImagePreviewController.iOS.Renderers
                 () =>
                 {
                     backgroundView.Alpha = 1;
-                    zoomedImageView.Frame = GetInitialZoomedImageViewFrame(window.Bounds.Size, _imageView.Image.Size);;
+                    zoomedImageView.Frame = GetInitialZoomedImageViewFrame(window.Bounds.Size, Control.Image.Size);
                 }, 
                 () => {
                     scrollView.AddSubview(zoomedImageView);
